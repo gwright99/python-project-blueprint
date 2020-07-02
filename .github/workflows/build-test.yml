@@ -1,0 +1,68 @@
+# REFERENCE:
+#  https://martinheinz.dev/blog/17
+# https://github.com/MartinHeinz/python-project-blueprint/blob/master/.github/workflows/build-test.yml
+# https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions
+
+name: Build, Test, Lint
+
+# What triggers the running of the job
+# Blog post was: > on : push: tags: - '*'
+on: [push]
+
+jobs:
+  # First job "build" verifies our application can be built by running 'make build-dev'
+  # Before running build-dev, repository is checked out of Github repository via 'checkout'.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Run Makefile build for Development
+        run: make build-dev
+
+  # Run 'setup-python@v1' to create python environment for us (see: https://github.com/actions/setup-python)
+  # Run pytest tests. Install linters. Invoke makefile linting.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.8'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Makefile test
+        run: make test
+
+      - name: Install Linters
+        run: |
+          pip install pylint
+          pip install flake8
+          pip install bandit
+      - name: Run Linters
+        run: make lint
+
+      # CodeClimate provides metrics into CICD processes.
+      # https://codeclimate.com/velocity/understand-diagnose/
+      # Set GIT_BRANCH by retrieving GITHUB_REF env variable, then download the test reporter and execute.
+      #- name: Send report to CodeClimate
+      #  run: |
+      #    export GIT_BRANCH="${GITHUB_REF/refs\/heads\//}"
+      #    curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+      #    chmod +x ./cc-test-reporter
+      #    ./cc-test-reporter format-coverage -t coverage.py coverage.xml
+      #    ./cc-test-reporter upload-coverage -r "${{ secrets.CC_TEST_REPORTER_ID }}"
+
+      # Cloud code analytics service
+      # Heinz says you need to create a "sonar-project.properties" file in the repository with:
+      #   sonar.organization=martinheinz-github
+      #   sonar.projectKey=MartinHeinz_python-project-blueprint
+      #   sonar.sources=blueprint
+      #- name: SonarCloud scanner
+      #  uses: sonarsource/sonarcloud-github-action@master
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
